@@ -1,12 +1,42 @@
 import express from "express";
 import multer from "multer";
 import path from "path";
+import fs from "fs";
+import pdf from "pdf-parse";
 const router = express.Router();
-const upload = multer({ dest: path.resolve("uploads/") });
-
-router.post("/upload", upload.single("file"), (req, res) => {
-  res.send("file uploaded succesfull");
-  console.log(req.file);
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "uploads/");
+  },
+  filename: function (req, file, cb) {
+    cb(null, file.originalname);
+  },
+});
+const upload = multer({
+  storage,
+  fileFilter: function (req, file, cb) {
+    if (file.mimetype === "application/pdf") {
+      cb(null, true);
+    } else cb(new Error("only pdfs are allowed"));
+  },
 });
 
+router.post("/upload", (req, res) => {
+  upload.single("file")(req, res, (err) => {
+    if (err) {
+      if (err instanceof multer.MulterError) {
+        return res.status(400).send(`multerError:${err.message}`);
+      } else {
+        return res.status(400).send(err.message);
+      }
+    }
+    res.send("file sent succesfully");
+  });
+});
+
+let dataBuffer = fs.readFileSync("../uploads");
+
+pdf(dataBuffer).then(function (data) {
+  console.log(data);
+});
 export default router;
