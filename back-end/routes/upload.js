@@ -1,6 +1,5 @@
 import express from "express";
 import multer from "multer";
-import path from "path";
 import fs from "fs";
 import pdf from "pdf-parse";
 const router = express.Router();
@@ -31,12 +30,26 @@ router.post("/upload", (req, res) => {
       }
     }
     res.send("file sent succesfully");
+
+    // const filePath = req.file.path;
+
+    // fs.readFile(filePath, (error, dataBuffer) => {
+    //   if (err) {
+    //     return res.status(500).send("error reading the file");
+    //   }
+    //   pdf(dataBuffer)
+    //     .then((data) => {
+    //       res.status(200).json({
+    //         message: "file uploaded and parsed succesfully",
+    //         text: data.text,
+    //         info: data.info,
+    //       });
+    //     })
+    //     .catch((pdfErr) => {
+    //       res.status(500).send("error persing the pdf");
+    //     });
+    // });
   });
 });
 
-let dataBuffer = fs.readFileSync("../uploads");
-
-pdf(dataBuffer).then(function (data) {
-  console.log(data);
-});
 export default router;
