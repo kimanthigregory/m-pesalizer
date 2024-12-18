@@ -16,6 +16,7 @@ dist-ssr
 # Editor directories and files
 .vscode/*
 .venv/
+venv/
 ./pip
 build/
 !.vscode/extensions.json
