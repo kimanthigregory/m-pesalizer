@@ -1,6 +1,7 @@
 from flask import request ,Blueprint
 from flask import Flask
-from utilities.pdfparser import pdf_to_json
+from utilities.pdfparser import pdf_to_json 
+from utilities.unlock_pdf_utils import unlock_pdf
 
 import os
 
@@ -9,6 +10,7 @@ app = Flask(__name__)
 upload_bp = Blueprint('upload', __name__)
 
 UPLOAD_FOLDER = 'uploads'
+OUTPUT_FOLDER = 'unlocked'
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
@@ -33,7 +35,7 @@ def upload_file():
             file_path  = os.path.join(app.config['UPLOAD_FOLDER'], file.filename )
             file.save(file_path)
             pdf_to_json(file_path)
-            
+            unlock_pdf(file_path,)
             return f"file {file.filename}  uploaded successfully ", 200
 
         else:
