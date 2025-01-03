@@ -3,7 +3,7 @@ from PyPDF2 import PdfReader, PdfWriter
 def unlock_pdf(input_path, output_path, password):
     try:
         reader = PdfReader(input_path)
-        if reader.is_encrypted:
+        if reader.is_encrypted: 
             reader.decrypt(password)
 
         writer = PdfWriter()
