@@ -13,6 +13,7 @@ def unlock_pdf(input_path, output_path, password):
 
         with open(output_path, "wb") as output_file:
             writer.write(output_file)
+            print(output_path)
         return output_path
         
     except Exception as e:
