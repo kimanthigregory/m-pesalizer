@@ -4,6 +4,7 @@ from utilities.pdfparser import pdf_to_json
 from utilities.unlock_pdf_utils import unlock_pdf
 
 import os
+import cProfile
 
 app = Flask(__name__)
 
@@ -33,24 +34,23 @@ def upload_file():
             return 'no selected file', 400
         
         if file and allowed_files(file.filename):
-            file_path  = os.path.join(app.config['UPLOAD_FOLDER'], file.filename )
-            file.save(file_path)
-            unlock_file_path = os.path.join(app.config['UNLOCKED_FOLDER'])
-            file.save(unlock_file_path)
-      
             try:
-              unlock_result = unlock_pdf(file_path, unlock_file_path, '598850')
-              if isinstance(unlock_result, str):
-                  return unlock_result, 400
-              
-            except Exception as e:
-                return str(e), 400
-            try:
-              pdf_data = pdf_to_json(unlock_result)
-              return {"message":  "file uploaded successfully","data": pdf_data}, 200
-            except Exception as e:
-              return f"file not uploaded ", 400
+              file_path  = os.path.join(app.config['UPLOAD_FOLDER'], file.filename )
+              file.save(file_path)
+              print(file_path)
+              unlock_file_path = os.path.join(app.config['UPLOAD_FOLDER'],f"unlocked_{file.filename}")
+              file.save(unlock_file_path)
+              print(unlock_file_path)
+              unlock_result = unlock_pdf(file_path,unlock_file_path, '598850')
+              if not unlock_result.endswith(".pdf"):
+                print(f"Error unlocking PDF: {unlock_result}")
+                return {"status": "error", "message": unlock_result}
 
+              print(f"Unlocked file saved at: {unlock_file_path}")
+              # print (unlock_file_path)
+              pdf_to_json(unlock_file_path)
+            except Exception as e:
+              return str(e), 400
         else:
             return "file type not allowed", 400
     
