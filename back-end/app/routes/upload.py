@@ -1,7 +1,7 @@
 from flask import request ,Blueprint
 from flask import Flask
-from utilities.pdfparser import pdf_to_json 
-from utilities.unlock_pdf_utils import unlock_pdf
+from app.utilities.pdfparser import pdf_to_json 
+from app.utilities.unlock_pdf_utils import unlock_pdf
 
 import os
 import cProfile

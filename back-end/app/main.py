@@ -1,5 +1,5 @@
 from flask import Flask
-from upload import upload_bp
+from app.routes.upload import upload_bp
 app = Flask(__name__)
 
 app.register_blueprint(upload_bp)
