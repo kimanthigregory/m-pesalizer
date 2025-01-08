@@ -2,19 +2,40 @@ from flask import request ,Blueprint
 from flask import Flask
 from app.utilities.pdfparser import pdf_to_json 
 from app.utilities.unlock_pdf_utils import unlock_pdf
+from threading import Timer
+
 
 import os
-import cProfile
+import tempfile
+import uuid
+import shutil
+import atexit
 
 app = Flask(__name__)
 
 upload_bp = Blueprint('upload', __name__)
 
-UPLOAD_FOLDER = 'uploads'
-UNLOCKED_FOLDER = ' unlocked_pdfs'
+user_id= 123467
 
-app.config['UNLOCKED_FOLDER'] = UNLOCKED_FOLDER
+# UNLOCKED_FOLDER = ' unlocked_pdfs'
+
+# app.config['UNLOCKED_FOLDER'] = UNLOCKED_FOLDER
+def shedule_delete_folder(folder_path, delay = 60):
+   Timer(delay, lambda: shutil.rmtree(folder_path, ignore_errors=True)).start()
+
+
+def  get_temp_dir(user_id):
+    session_id = f"{user_id}-{uuid.uuid4()}"
+    user_temp_dir = os.path.join(tempfile.gettempdir(),session_id)
+    os.makedirs(user_temp_dir)
+    shedule_delete_folder(user_temp_dir)
+    return user_temp_dir
+
+temp_dir = get_temp_dir(user_id)
+
+UPLOAD_FOLDER = temp_dir
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
 
 ALLOWED_EXTENSIONS = {'pdf'}
 
