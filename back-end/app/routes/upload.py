@@ -1,8 +1,8 @@
 from flask import request ,Blueprint
-from flask import Flask
+from flask import Flask ,session
 from app.utilities.pdfparser import pdf_to_json 
 from app.utilities.unlock_pdf_utils import unlock_pdf
-from threading import Timer
+
 
 
 import os
@@ -13,29 +13,18 @@ import atexit
 
 app = Flask(__name__)
 
+ 
+app.secret_key = 'c659ad2b-e49a-4cba-91a9-bb11dc4c0c5a'
 upload_bp = Blueprint('upload', __name__)
 
-user_id= 123467
-
-# UNLOCKED_FOLDER = ' unlocked_pdfs'
-
-# app.config['UNLOCKED_FOLDER'] = UNLOCKED_FOLDER
-def shedule_delete_folder(folder_path, delay = 60):
-   Timer(delay, lambda: shutil.rmtree(folder_path, ignore_errors=True)).start()
-
-
-def  get_temp_dir(user_id):
-    session_id = f"{user_id}-{uuid.uuid4()}"
-    user_temp_dir = os.path.join(tempfile.gettempdir(),session_id)
-    os.makedirs(user_temp_dir)
-    shedule_delete_folder(user_temp_dir)
-    return user_temp_dir
-
-temp_dir = get_temp_dir(user_id)
-
-UPLOAD_FOLDER = temp_dir
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
+@app.before_request
+def assign_user_id():
+   if 'user_id' not in session:
+      session['user_id'] = str(uuid.uuid4()) 
+      print(f"Hello, your session  id is {session['user_id']}")
+   else:
+      print(f"Hello, your existing session  id is {session['user_id']}")
+ 
 
 ALLOWED_EXTENSIONS = {'pdf'}
 
@@ -56,16 +45,26 @@ def upload_file():
         
         if file and allowed_files(file.filename):
             try:
-              file_path  = os.path.join(app.config['UPLOAD_FOLDER'], file.filename )
+              print(session['user_id'])
+              user_id = session['user_id']
+              user_temp_dir = os.path.join(tempfile.gettempdir(), user_id)
+              os.makedirs(user_temp_dir)
+ 
+              file_path  = os.path.join(user_temp_dir, file.filename )
               file.save(file_path)
               print(file_path)
-              unlock_file_path = os.path.join(app.config['UPLOAD_FOLDER'],f"unlocked_{file.filename}")
+
+
+              unlock_file_path = os.path.join(user_temp_dir,f"unlocked_{file.filename}")
               file.save(unlock_file_path)
               print(unlock_file_path)
+
+
               unlock_result = unlock_pdf(file_path,unlock_file_path, '598850')
               if not unlock_result.endswith(".pdf"):
                 print(f"Error unlocking PDF: {unlock_result}")
                 return {"status": "error", "message": unlock_result}
+
 
               print(f"Unlocked file saved at: {unlock_file_path}")
               # print (unlock_file_path)
@@ -87,3 +86,10 @@ def upload_file():
       </body>
     </html>
     </form>'''
+
+# @app.route('/cleanup', methods = ['POST'])
+# def cleanup():
+#   user_id = session['user_id']
+#   user_temp_dir = os.path.join(tempfile.gettempdir(),user_id)
+#   shutil.rmtree(user_temp_dir, ignore_errors = True)
+#   return {"status": "success", "message": "temprary files deleted"}
