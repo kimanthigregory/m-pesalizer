@@ -86,10 +86,3 @@ def upload_file():
       </body>
     </html>
     </form>'''
-
-# @app.route('/cleanup', methods = ['POST'])
-# def cleanup():
-#   user_id = session['user_id']
-#   user_temp_dir = os.path.join(tempfile.gettempdir(),user_id)
-#   shutil.rmtree(user_temp_dir, ignore_errors = True)
-#   return {"status": "success", "message": "temprary files deleted"}
