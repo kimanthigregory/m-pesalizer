@@ -1,7 +1,8 @@
 import pdfplumber
 import json
+import os
 
-def pdf_to_json(pdf_path):
+def pdf_to_json(pdf_path,output_folder):
     data =[ ]
     with pdfplumber.open(pdf_path) as pdf:
         for page in pdf.pages:
@@ -19,7 +20,8 @@ def pdf_to_json(pdf_path):
 
     # Print or save the JSON data
     print(json_output)
-
+    file_path = os.path.join(output_folder,'output.json')
     # Optionally, save the JSON data to a file
-    with open("output.json", "w") as json_file:
+    with open(file_path, "w") as json_file:
         json.dump(data, json_file, indent=4)
+    print(f"json file save in {file_path}")

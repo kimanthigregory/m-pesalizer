@@ -1,79 +1,61 @@
-from flask import request ,Blueprint
-from flask import Flask ,session
-from app.utilities.pdfparser import pdf_to_json 
-from app.utilities.unlock_pdf_utils import unlock_pdf
-
-
-
+from flask import request, Blueprint, session, redirect, url_for
 import os
 import tempfile
 import uuid
 import shutil
-import atexit
+from app.utilities.pdfparser import pdf_to_json
+from app.utilities.unlock_pdf_utils import unlock_pdf
 
-app = Flask(__name__)
-
- 
-app.secret_key = 'c659ad2b-e49a-4cba-91a9-bb11dc4c0c5a'
 upload_bp = Blueprint('upload', __name__)
-
-@app.before_request
-def assign_user_id():
-   if 'user_id' not in session:
-      session['user_id'] = str(uuid.uuid4()) 
-      print(f"Hello, your session  id is {session['user_id']}")
-   else:
-      print(f"Hello, your existing session  id is {session['user_id']}")
- 
-
 ALLOWED_EXTENSIONS = {'pdf'}
 
 def allowed_files(filename):
-    return '.' in filename and filename.rsplit('.',1)[1].lower() in ALLOWED_EXTENSIONS
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+@upload_bp.before_request
+def ensure_user_id():
+    if 'user_id' not in session:
+        session['user_id'] = str(uuid.uuid4())
+        print(f"Assigned new session ID: {session['user_id']}")
+    else:
+        print(f"Existing session ID: {session['user_id']}")
 
-@upload_bp.route('/upload', methods =['GET','POST'])
+@upload_bp.route('/upload', methods=['GET', 'POST'])
 def upload_file():
     if request.method == 'POST':
         if 'the_file' not in request.files:
-            return "no file part" , 400
+            return "No file part", 400
 
         file = request.files['the_file']
 
-        if file.filename =='':
-            return 'no selected file', 400
-        
+        if file.filename == '':
+            return "No selected file", 400
+
         if file and allowed_files(file.filename):
             try:
-              print(session['user_id'])
-              user_id = session['user_id']
-              user_temp_dir = os.path.join(tempfile.gettempdir(), user_id)
-              os.makedirs(user_temp_dir)
- 
-              file_path  = os.path.join(user_temp_dir, file.filename )
-              file.save(file_path)
-              print(file_path)
+                user_id = session['user_id']
+                user_temp_dir = os.path.join(tempfile.gettempdir(), user_id)
+                os.makedirs(user_temp_dir, exist_ok=True)
 
+                file_path = os.path.join(user_temp_dir, file.filename)
+                file.save(file_path)
+                print(f"Uploaded file saved to: {file_path}")
 
-              unlock_file_path = os.path.join(user_temp_dir,f"unlocked_{file.filename}")
-              file.save(unlock_file_path)
-              print(unlock_file_path)
+                unlock_file_path = os.path.join(user_temp_dir, f"unlocked_{file.filename}")
+                unlock_result = unlock_pdf(file_path, unlock_file_path, '598850')
 
+                if not unlock_result.endswith(".pdf"):
+                    print(f"Error unlocking PDF: {unlock_result}")
+                    return {"status": "error", "message": unlock_result}
 
-              unlock_result = unlock_pdf(file_path,unlock_file_path, '598850')
-              if not unlock_result.endswith(".pdf"):
-                print(f"Error unlocking PDF: {unlock_result}")
-                return {"status": "error", "message": unlock_result}
-
-
-              print(f"Unlocked file saved at: {unlock_file_path}")
-              # print (unlock_file_path)
-              pdf_to_json(unlock_file_path)
+                print(f"Unlocked file saved at: {unlock_file_path}")
+                pdf_to_json(unlock_file_path,user_temp_dir)
+                return f"File uploaded and processed successfully. Unlocked file: {unlock_file_path}"
             except Exception as e:
-              return str(e), 400
+                return str(e), 500
         else:
-            return "file type not allowed", 400
-    
+            return "File type not allowed", 400
+
     return '''<!doctype html>
     <html>
       <head><title>Upload a File</title></head>
@@ -81,8 +63,28 @@ def upload_file():
         <h1>Upload a File</h1>
         <form method="POST" enctype="multipart/form-data">
           <input type="file" name="the_file">
-          <input type="submit">
+          <input type="submit" value="Upload">
+        </form>
+        <form action="/end_session" method="POST">
+          <button type="submit">End Session</button>
         </form>
       </body>
-    </html>
-    </form>'''
+    </html>'''
+
+@upload_bp.route('/end_session', methods=['POST'])
+def end_session():
+    try:
+        if 'user_id' in session:
+            user_id = session['user_id']
+            user_temp_dir = os.path.join(tempfile.gettempdir(), user_id)
+
+            if os.path.exists(user_temp_dir):
+                shutil.rmtree(user_temp_dir)
+                print(f"Cleaned up temporary files for user: {user_id}")
+
+            session.pop('user_id', None)
+            print("Session ended.")
+    except Exception as e:
+        print(f"Error ending session: {e}")
+
+    return redirect(url_for('upload.upload_file'))
