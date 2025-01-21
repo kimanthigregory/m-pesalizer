@@ -65,6 +65,10 @@ def upload_file():
           <input type="file" name="the_file">
           <input type="submit" value="Upload">
         </form>
+        <form method = "POST">
+          <input type = "password" name = "pass_code">
+          <button type = "submit"> submit </button>
+        </form>
         <form action="/end_session" method="POST">
           <button type="submit">End Session</button>
         </form>
