@@ -27,7 +27,7 @@ def upload_file():
             return "No file part", 400
 
         file = request.files['the_file']
-
+        pass_key = request.form.get('pass_code')
         if file.filename == '':
             return "No selected file", 400
 
@@ -42,7 +42,7 @@ def upload_file():
                 print(f"Uploaded file saved to: {file_path}")
 
                 unlock_file_path = os.path.join(user_temp_dir, f"unlocked_{file.filename}")
-                unlock_result = unlock_pdf(file_path, unlock_file_path, '598850')
+                unlock_result = unlock_pdf(file_path, unlock_file_path, pass_key)
 
                 if not unlock_result.endswith(".pdf"):
                     print(f"Error unlocking PDF: {unlock_result}")
@@ -63,12 +63,11 @@ def upload_file():
         <h1>Upload a File</h1>
         <form method="POST" enctype="multipart/form-data">
           <input type="file" name="the_file">
+          <input type = "password" name = "pass_code">
           <input type="submit" value="Upload">
         </form>
-        <form method = "POST">
-          <input type = "password" name = "pass_code">
-          <button type = "submit"> submit </button>
-        </form>
+      
+      
         <form action="/end_session" method="POST">
           <button type="submit">End Session</button>
         </form>
