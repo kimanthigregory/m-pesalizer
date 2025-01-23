@@ -22,6 +22,7 @@ def pdf_to_json(pdf_path,output_folder):
     print(json_output)
     file_path = os.path.join(output_folder,'output.json')
     # Optionally, save the JSON data to a file
-    with open(file_path, "w") as json_file:
-        json.dump(data, json_file, indent=4)
+    # with open(file_path, "w") as json_file:
+    #     json.dump(data, json_file, indent=4)
     print(f"json file save in {file_path}")
+    return json_output

@@ -1,4 +1,4 @@
-from flask import request, Blueprint, session, redirect, url_for
+from flask import request, Blueprint, session, redirect, url_for, jsonify
 import os
 import tempfile
 import uuid
@@ -50,7 +50,10 @@ def upload_file():
 
                 print(f"Unlocked file saved at: {unlock_file_path}")
                 pdf_to_json(unlock_file_path,user_temp_dir)
-                return f"File uploaded and processed successfully. Unlocked file: {unlock_file_path}"
+                json_result = pdf_to_json(unlock_file_path, user_temp_dir)
+                session['json_data'] = json_result  # Save result to session
+
+                return jsonify({"status": "success", "message": "File processed successfully"}), 200
             except Exception as e:
                 return str(e), 500
         else:
