@@ -51,7 +51,7 @@ def upload_file():
                 print(f"Unlocked file saved at: {unlock_file_path}")
                 pdf_to_json(unlock_file_path,user_temp_dir)
                 json_result = pdf_to_json(unlock_file_path, user_temp_dir)
-                session['json_data'] = json_result  # Save result to session
+                session['json_data'] = json_result      # Save result to session
 
                 return jsonify({"status": "success", "message": "File processed successfully"}), 200
             except Exception as e:
