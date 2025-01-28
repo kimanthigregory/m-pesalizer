@@ -5,12 +5,12 @@ from flask import Flask, jsonify, Blueprint , request, session
 
 app = Flask(__name__)
 
-summary_bp = Blueprint('summary', __name__)
+filter_bp = Blueprint('filter', __name__)
 
-@summary_bp.route('/filter_transactions', methods=['POST'])
+@filter_bp.route('/filter', methods=['GET'])
 def filter_transactions_form():
     json_path = session['json_data']  # Path to the JSON file
-    search_name = request.form.get('name', '').strip()  # Name to search for
+    search_name = 'loan' # Name to search for
 
     if not json_path or not os.path.exists(json_path):
         return {"status": "error", "message": "JSON file not found"}, 404
@@ -33,6 +33,6 @@ def filter_transactions_form():
         filtered_data = filtered_df.to_dict(orient='records')
 
         # Render the filtered data in a template or return JSON (based on your front-end)
-        return json.dump(filtered_data, indent=4)
+        return jsonify({"status": "filtered", "message": filtered_data}), 200
     except Exception as e:
         return {"status": "error", "message": f"An error occurred: {str(e)}"}, 500
