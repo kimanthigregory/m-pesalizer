@@ -32,6 +32,9 @@ export default function LandingPage() {
           return <Card key={data.id} item={data} />;
         })}
       </section>
+      <section>
+        <div></div>
+      </section>
     </>
   );
 }
