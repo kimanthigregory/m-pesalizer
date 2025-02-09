@@ -124,6 +124,9 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+      <section>
+        <div></div>
+      </section>
     </>
   );
 }
