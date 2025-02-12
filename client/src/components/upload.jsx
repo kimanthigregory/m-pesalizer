@@ -1,98 +1,178 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
+import { io } from "socket.io-client";
 
-export const FileUpload = ({ onChange }) => {
-  const [files, setFiles] = useState([]);
+export const FileUpload = ({ onUploadSuccess, onUploadError }) => {
+  const [file, setFile] = useState(null);
+  const [password, setPassword] = useState("");
   const fileInputRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isUploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [socket, setSocket] = useState(null);
+
+  useEffect(() => {
+    console.log("Upload Progress:", uploadProgress);
+  }, [uploadProgress]);
+
+  useEffect(() => {
+    const newSocket = io("http://127.0.0.1:5000"); // Connect to Flask-SocketIO
+    setSocket(newSocket);
+
+    newSocket.on("connect", () => {
+      console.log("Connected to WebSocket server");
+    });
+
+    newSocket.on("processing_update", (data) => {
+      console.log("Processing update:", data);
+
+      if (data.status === "done") {
+        setIsProcessing(false);
+        setUploadSuccess(true);
+        onUploadSuccess && onUploadSuccess();
+      } else if (data.status === "failed") {
+        setIsProcessing(false);
+        onUploadError && onUploadError(data.error);
+      }
+    });
+
+    return () => newSocket.close();
+  }, []);
 
   const handleFileChange = (event) => {
-    const newFiles = Array.from(event.target.files || []);
-    setFiles((prevFiles) => [...prevFiles, ...newFiles]);
-    onChange && onChange(newFiles);
+    const selectedFile = event.target.files[0];
+    if (selectedFile && selectedFile.type === "application/pdf") {
+      setFile(selectedFile);
+    } else {
+      alert("Only PDF files are allowed");
+    }
   };
 
-  const handleClick = () => {
-    fileInputRef.current?.click();
-  };
+  const handleSubmit = () => {
+    if (!file || !password) {
+      alert("Please provide both the PDF file and password");
+      return;
+    }
 
-  // Drag and Drop Handlers
-  const handleDragOver = (event) => {
-    event.preventDefault();
-    setIsDragging(true);
-  };
+    setUploadProgress(0);
+    setIsProcessing(true);
+    setUploading(true);
 
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
+    const formData = new FormData();
+    formData.append("the_file", file);
+    formData.append("pass_code", password);
 
-  const handleDrop = (event) => {
-    event.preventDefault();
-    setIsDragging(false);
-    const newFiles = Array.from(event.dataTransfer.files);
-    setFiles((prevFiles) => [...prevFiles, ...newFiles]);
-    onChange && onChange(newFiles);
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "http://127.0.0.1:5000/upload", true);
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const percent = Math.round((event.loaded / event.total) * 100);
+        setUploadProgress(percent);
+      }
+    };
+
+    xhr.onload = () => {
+      setUploading(false);
+      if (xhr.status === 200) {
+        setUploadProgress(100);
+      } else {
+        setIsProcessing(false);
+        onUploadError && onUploadError("Upload failed.");
+      }
+    };
+
+    xhr.onerror = () => {
+      setUploading(false);
+      setIsProcessing(false);
+      onUploadError && onUploadError("Network error.");
+    };
+
+    xhr.send(formData);
   };
 
   return (
     <div className="w-full">
-      <div
-        className={`p-10 rounded-lg cursor-pointer w-full relative overflow-hidden border-2 border-dashed ${
-          isDragging ? "border-blue-500 bg-blue-100" : "border-gray-300"
-        } transition-all duration-300`}
-        onClick={handleClick}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          className="hidden"
-          onChange={handleFileChange}
-        />
-
-        <div className="flex flex-col items-center justify-center relative z-10">
-          <p className="text-gray-700 font-bold">Upload file</p>
-          <p className="text-gray-500 text-sm mt-2">
-            Drag & drop your pdf here or click to upload
-          </p>
-
-          {/* Upload Icon */}
-          <div className="mt-4">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-10 w-10 text-gray-500"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"></path>
-              <polyline points="16 12 12 8 8 12"></polyline>
-              <line x1="12" y1="8" x2="12" y2="20"></line>
-            </svg>
+      {!file ? (
+        <div
+          className={`p-10 rounded-lg cursor-pointer w-full border-2 border-dashed ${
+            isDragging ? "border-blue-500 bg-blue-100" : "border-emerald-500"
+          } transition-all duration-300`}
+          onClick={() => fileInputRef.current.click()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setIsDragging(false);
+            handleFileChange(e);
+          }}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/pdf"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+          <div className="flex flex-col items-center justify-center">
+            <p className="text-gray-700 font-bold">Upload PDF file</p>
+            <p className="text-gray-500 text-sm mt-2">
+              Drag & drop your file here or click to upload
+            </p>
           </div>
         </div>
-      </div>
+      ) : uploadSuccess ? (
+        // Success message UI
+        <div className="p-6 rounded-lg bg-green-500 text-white text-center shadow-md">
+          <p className="text-2xl font-bold">✅ Processing Complete!</p>
+          <p className="mt-2 text-lg">
+            Your PDF has been successfully processed.
+          </p>
+        </div>
+      ) : isProcessing ? (
+        // Loading spinner while processing
+        <div className="flex flex-col items-center justify-center p-6 bg-slate-700 rounded-lg">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500"></div>
+          <p className="text-yellow-400 font-bold mt-4">Processing PDF...</p>
+        </div>
+      ) : (
+        // File name, password input, and upload button
+        <div className="p-6 rounded-lg bg-slate-700 shadow-md">
+          <p className="text-gray-400 font-medium">{file.name}</p>
+          <input
+            type="password"
+            placeholder="Enter PDF password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full mt-4 p-2 border rounded-lg"
+          />
 
-      {/* Display Uploaded Files */}
-      <div className="mt-4">
-        {files.length > 0 &&
-          files.map((file, index) => (
-            <div
-              key={index}
-              className="bg-slate-700 p-3 rounded-md flex justify-between items-center mt-2"
-            >
-              <p className="text-gray-500 truncate">{file.name}</p>
-              <span className="text-sm text-gray-500">
-                {(file.size / (1024 * 1024)).toFixed(2)} MB
-              </span>
+          {isUploading ? (
+            <div className="mt-4 w-full">
+              <p className="text-white text-center">
+                Uploading... {uploadProgress}%
+              </p>
+              <div className="w-full bg-gray-300 rounded-full h-2 mt-2">
+                <div
+                  className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                ></div>
+              </div>
             </div>
-          ))}
-      </div>
+          ) : (
+            <button
+              onClick={handleSubmit}
+              className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-lg w-full"
+            >
+              Submit
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
