@@ -128,7 +128,7 @@ export const FileUpload = ({ onUploadSuccess, onUploadError }) => {
       ) : uploadSuccess ? (
         // Success message UI
         <div className="p-6 rounded-lg bg-green-500 text-white text-center shadow-md">
-          <p className="text-2xl font-bold">✅ Processing Complete!</p>
+          <p className="text-2xl font-bold">Processing Complete!</p>
           <p className="mt-2 text-lg">
             Your PDF has been successfully processed.
           </p>
