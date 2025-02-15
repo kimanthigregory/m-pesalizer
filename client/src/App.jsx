@@ -1,14 +1,21 @@
-import { useState } from "react";
-import LandingPage from "./routes/landingPage";
-// import reactLogo from './assets/react.svg'
-// import viteLogo from '/vite.svg'
-import "./App.css";
+import React from "react";
+import { Sidebar, SidebarBody } from "./components/sidebar"; // Adjust path if needed
 
 function App() {
   return (
-    <>
-      <LandingPage />
-    </>
+    <div className="flex h-screen">
+      {/* Sidebar */}
+      <Sidebar>
+        <SidebarBody>
+          <p className="text-neutral-700 dark:text-neutral-200">Test Sidebar</p>
+        </SidebarBody>
+      </Sidebar>
+
+      {/* Main Content */}
+      <div className="flex-1 flex items-center justify-center">
+        <h1 className="text-2xl font-bold">Main Content</h1>
+      </div>
+    </div>
   );
 }
 
