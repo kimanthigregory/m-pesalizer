@@ -13,7 +13,7 @@ function App() {
 
       {/* Main Content */}
       <div className="flex-1 flex items-center justify-center">
-        <h1 className="text-2xl font-bold">Main Content</h1>
+        <h1 className="text-2xl font-bold">Dashboard</h1>
       </div>
     </div>
   );
