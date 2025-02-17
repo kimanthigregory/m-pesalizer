@@ -1,22 +1,18 @@
-import React from "react";
-import { Sidebar, SidebarBody } from "./components/sidebar"; // Adjust path if needed
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import SidebarContent from "./components/sidebaBody";
+import LandingPage from "./routes/landingPage";
 
-function App() {
-  return (
-    <div className="flex h-screen">
-      {/* Sidebar */}
-      <Sidebar>
-        <SidebarBody>
-          <p className="text-neutral-700 dark:text-neutral-200">Test Sidebar</p>
-        </SidebarBody>
-      </Sidebar>
+const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <LandingPage />,
+  },
+  {
+    path: "dashboard",
+    element: <SidebarContent />,
+  },
+]);
 
-      {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-      </div>
-    </div>
-  );
+export default function App() {
+  return <RouterProvider router={router} />;
 }
-
-export default App;
