@@ -1,6 +1,10 @@
 import React, { useState } from "react";
 import { Sidebar, SidebarBody, SidebarLink } from "./sidebar";
 import { Link } from "react-router-dom";
+import dashboardIcon from "../assets/dashboard.webp";
+import tableIcon from "../assets/table.webp";
+import summaryIcon from "../assets/summary.webp";
+
 import {
   IconArrowLeft,
   IconBrandTabler,
@@ -17,15 +21,19 @@ export function SidebarContent() {
       label: "Dashboard",
       href: "#",
       icon: (
-        <IconBrandTabler className="h-5 w-5 text-neutral-700 dark:text-neutral-200" />
+        // <IconBrandTabler className="h-5 w-5 text-neutral-700 dark:text-neutral-200" />
+        <img src={dashboardIcon} alt="Dashboard" className="w-5 h-5" />
       ),
     },
     {
-      label: "Profile",
+      label: "Summary",
       href: "#",
-      icon: (
-        <IconUserBolt className="h-5 w-5 text-neutral-700 dark:text-neutral-200" />
-      ),
+      icon: <img src={summaryIcon} alt="Dashboard" className="w-5 h-5" />,
+    },
+    {
+      label: "All Transactions",
+      href: "#",
+      icon: <img src={tableIcon} alt="Dashboard" className="w-5 h-5" />,
     },
     {
       label: "Settings",
@@ -35,7 +43,7 @@ export function SidebarContent() {
       ),
     },
     {
-      label: "Logout",
+      label: "End Session",
       href: "#",
       icon: (
         <IconArrowLeft className="h-5 w-5 text-neutral-700 dark:text-neutral-200" />
@@ -60,23 +68,6 @@ export function SidebarContent() {
               ))}
             </div>
           </div>
-          <div>
-            <SidebarLink
-              link={{
-                label: "Manu Arora",
-                href: "#",
-                icon: (
-                  <img
-                    src="https://assets.aceternity.com/manu.png"
-                    className="h-7 w-7 flex-shrink-0 rounded-full"
-                    width={50}
-                    height={50}
-                    alt="Avatar"
-                  />
-                ),
-              }}
-            />
-          </div>
         </SidebarBody>
       </Sidebar>
       <Dashboard />
@@ -95,7 +86,7 @@ export const Logo = () => (
       animate={{ opacity: 1 }}
       className="font-medium text-black dark:text-white whitespace-pre"
     >
-      Acet Labs
+      Analyze
     </motion.span>
   </Link>
 );
@@ -112,12 +103,12 @@ export const LogoIcon = () => (
 const Dashboard = () => {
   return (
     <div className="flex flex-1">
-      <div className="p-2 md:p-10 rounded-tl-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 flex flex-col gap-2 flex-1 w-full h-full">
+      <div className="p-2 md:p-10 rounded-tl-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-100 flex flex-col gap-2 flex-1 w-full h-full">
         <div className="flex gap-2">
           {[...new Array(4)].map((_, idx) => (
             <div
               key={`first-array-${idx}`}
-              className="h-20 w-full rounded-lg  bg-gray-100 dark:bg-neutral-800 animate-pulse"
+              className="h-20 w-full rounded-lg  bg-gray-100 dark:bg-neutral-800 "
             ></div>
           ))}
         </div>
@@ -125,7 +116,7 @@ const Dashboard = () => {
           {[...new Array(2)].map((_, idx) => (
             <div
               key={`second-array-${idx}`}
-              className="h-full w-full rounded-lg  bg-gray-100 dark:bg-neutral-800 animate-pulse"
+              className="h-full w-full rounded-lg  bg-gray-100 dark:bg-neutral-800 "
             ></div>
           ))}
         </div>
