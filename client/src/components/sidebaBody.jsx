@@ -5,12 +5,7 @@ import dashboardIcon from "../assets/dashboard.webp";
 import tableIcon from "../assets/table.webp";
 import summaryIcon from "../assets/summary.webp";
 
-import {
-  IconArrowLeft,
-  IconBrandTabler,
-  IconSettings,
-  IconUserBolt,
-} from "@tabler/icons-react";
+import { IconArrowLeft, IconSettings } from "@tabler/icons-react";
 import { motion } from "framer-motion";
 
 const cn = (...classes) => classes.filter(Boolean).join(" ");
