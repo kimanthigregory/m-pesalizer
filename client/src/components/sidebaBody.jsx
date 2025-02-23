@@ -15,10 +15,7 @@ export function SidebarContent() {
     {
       label: "Dashboard",
       href: "#",
-      icon: (
-        // <IconBrandTabler className="h-5 w-5 text-neutral-700 dark:text-neutral-200" />
-        <img src={dashboardIcon} alt="Dashboard" className="w-5 h-5" />
-      ),
+      icon: <img src={dashboardIcon} alt="Dashboard" className="w-5 h-5" />,
     },
     {
       label: "Summary",
