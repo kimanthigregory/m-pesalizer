@@ -98,13 +98,13 @@ const Dashboard = () => {
       <div className="p-2 md:p-10 rounded-tl-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-100 flex flex-col gap-2 flex-1 w-full h-full">
         <div className="min-h-screen p-4 bg-gray-200 flex flex-col gap-4">
           <div className="bg-lime-500 h-16 w-full rounded-lg"></div>
-
+          #column one
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex flex-col gap-4 md:w-1/2">
               <div className="bg-lime-500 h-24 w-full rounded-lg"></div>
               <div className="bg-lime-500 flex-1 rounded-lg"></div>
             </div>
-
+            #column two
             <div className="flex flex-col gap-4 md:w-1/2">
               <div className="bg-lime-500 h-24 w-full rounded-lg"></div>
               <div className="bg-lime-500 flex-1 rounded-lg"></div>
