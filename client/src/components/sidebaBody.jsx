@@ -91,7 +91,7 @@ export const LogoIcon = () => (
     <div className="h-5 w-6 bg-black dark:bg-white rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm flex-shrink-0" />
   </Link>
 );
-
+// dashboard
 const Dashboard = () => {
   return (
     <div className="flex flex-1">
