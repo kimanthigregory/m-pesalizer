@@ -1,101 +1,89 @@
-from flask import request, Blueprint, session, jsonify, current_app
-from flask_cors import CORS
-import os, tempfile, uuid, threading
-from flask_socketio import SocketIO
-
+from flask import request, Blueprint, session, jsonify
+import os, tempfile, uuid, threading, json  # Added json import
 from app.utilities.pdfparser import pdf_to_json
 from app.utilities.unlock_pdf_utils import unlock_pdf
 
 upload_bp = Blueprint('upload', __name__)
-socketio = None  # Will be initialized from main.py
+socketio = None 
 
 ALLOWED_EXTENSIONS = {'pdf'}
 
 def allowed_files(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-@upload_bp.before_request
-def ensure_user_id():
-    """Assigns a unique user ID to each session if not already set."""
-    if 'user_id' not in session:
-        session['user_id'] = str(uuid.uuid4())
+def init_socketio(sock):
+    global socketio
+    socketio = sock
 
 @upload_bp.route('/upload', methods=['POST'])
 def upload_file():
-    """Handles file upload and starts background processing."""
     if 'the_file' not in request.files:
         return jsonify({"status": "error", "message": "No file uploaded"}), 400
 
     file = request.files['the_file']
     pass_key = request.form.get('pass_code')
+    socket_id = request.form.get('socket_id') # Received from React
 
-    if file.filename == '':
-        return jsonify({"status": "error", "message": "No file selected"}), 400
+    if file.filename == '' or not allowed_files(file.filename):
+        return jsonify({"status": "error", "message": "Invalid file"}), 400
 
-    if file and allowed_files(file.filename):
-        user_id = session['user_id']
-        user_temp_dir = os.path.join(tempfile.gettempdir(), user_id)
-        os.makedirs(user_temp_dir, exist_ok=True)
+    user_id = session.get('user_id', str(uuid.uuid4()))
+    user_temp_dir = os.path.join(tempfile.gettempdir(), user_id)
+    os.makedirs(user_temp_dir, exist_ok=True)
 
-        file_path = os.path.join(user_temp_dir, file.filename)
-        file.save(file_path)
+    file_path = os.path.join(user_temp_dir, file.filename)
+    file.save(file_path)
 
-        # ✅ Start processing in a separate thread (passing only 3 arguments)
-        thread = threading.Thread(target=process_pdf, args=(user_id, file_path, pass_key))
-        thread.daemon = True  # Ensure thread exits with the app
-        thread.start()
+    # Start background thread
+    thread = threading.Thread(target=process_pdf, args=(user_id, file_path, pass_key, socket_id))
+    thread.daemon = True
+    thread.start()
 
-        return jsonify({"status": "success", "message": "File uploaded, processing started", "user_id": user_id}), 200
+    return jsonify({"status": "success", "user_id": user_id}), 200
 
-def process_pdf(user_id, file_path, pass_key):
-    """Processes the uploaded PDF file."""
+def process_pdf(user_id, file_path, pass_key, socket_id):
     try:
-        print("Processing PDF...")
-
-        # Define output path for unlocked PDF
+        print(f"--- Starting Processing for {user_id} ---")
+        
         unlocked_path = os.path.join(tempfile.gettempdir(), user_id, "unlocked.pdf")
-
-        # Check if the PDF requires unlocking
+        
         if pass_key:
+            print("Attempting to unlock PDF...")
             unlock_result = unlock_pdf(file_path, unlocked_path, pass_key)
             if isinstance(unlock_result, str) and unlock_result.startswith("failed"):
-                print("❌", unlock_result)
                 if socketio:
-                    socketio.emit("processing_update", {"user_id": user_id, "status": "failed", "error": unlock_result})
-                return  # Exit function if decryption failed
+                    socketio.emit("processing_update", {"status": "failed", "error": unlock_result}, to=socket_id)
+                return
         else:
-            unlocked_path = file_path  # ✅ Use original file if no password
+            unlocked_path = file_path
 
-        # Define output folder for JSON conversion
         output_folder = os.path.join(tempfile.gettempdir(), user_id)
-        os.makedirs(output_folder, exist_ok=True)
+        
+        # 1. Run your parser (this creates the .json file on disk)
+        pdf_to_json(unlocked_path, output_folder)
 
-        # Convert PDF to JSON
-        pdf_data = pdf_to_json(unlocked_path, output_folder)  # ✅ Now passing required `output_folder`
-
-        # ✅ Ensure `socketio` is initialized before emitting
-        if socketio:
-            socketio.emit("processing_update", {"user_id": user_id, "status": "done"})
+        # 2. VITAL STEP: Read the generated JSON file
+        # Check for 'output.json' (ensure this filename matches what pdf_to_json creates)
+        json_file_path = os.path.join(output_folder, "output.json")
+        
+        if os.path.exists(json_file_path):
+            with open(json_file_path, 'r') as f:
+                parsed_data = json.load(f)
+            
+            print(f"✅ Success: Parsed {len(parsed_data)} transactions.")
+            
+            # 3. Send data to the frontend
+            if socketio:
+                print(f"Emitting data to socket: {socket_id}")
+                socketio.emit("processing_update", {
+                    "status": "done",
+                    "data": parsed_data
+                }, to=socket_id)
         else:
-            print("⚠️ Warning: SocketIO is not initialized!")
-
-    except TypeError as e:
-        print("❌ TypeError:", str(e))
-        if "missing 1 required positional argument" in str(e):
-            print("⚠️ Likely cause: pdf_to_json() was called without all required arguments.")
-        if socketio:
-            socketio.emit("processing_update", {"user_id": user_id, "status": "failed", "error": str(e)})
+            print(f"❌ Error: JSON file not found at {json_file_path}")
+            socketio.emit("processing_update", {"status": "failed", "error": "Parser failed to create output"}, to=socket_id)
 
     except Exception as e:
-        print("❌ Error processing file:", str(e))
+        print(f"❌ Background Error: {str(e)}")
         if socketio:
-            socketio.emit("processing_update", {"user_id": user_id, "status": "failed", "error": str(e)})
-        else:
-            print("⚠️ Warning: SocketIO is not initialized!")
-
-
-
-def init_socketio(sock):
-    """Initialize socketio with the Flask app."""
-    global socketio
-    socketio = sock
+            socketio.emit("processing_update", {"status": "failed", "error": str(e)}, to=socket_id)

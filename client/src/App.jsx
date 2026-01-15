@@ -7,6 +7,7 @@ import TrendsPage from "./pages/TrendsPage";
 import FeesPage from "./pages/FeesPage";
 import RecurringPage from "./pages/RecurringPage";
 import RecipientsPage from "./pages/RecipientsPage";
+import ExportPage from "./pages/ExportPage";
 
 // 1. Import your data
 import mpesaData from "./data/mpesaData.json";
@@ -45,6 +46,10 @@ const router = createBrowserRouter([
       {
         path: "recipients",
         element: <RecipientsPage rawData={mpesaData} />,
+      },
+      {
+        path: "export",
+        element: <ExportPage rawData={mpesaData} />,
       },
     ],
   },

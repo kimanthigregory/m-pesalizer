@@ -12,33 +12,36 @@ export const FileUpload = ({ onUploadSuccess, onUploadError }) => {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [socket, setSocket] = useState(null);
 
+  // 1. Initialize Socket
   useEffect(() => {
-    console.log("Upload Progress:", uploadProgress);
-  }, [uploadProgress]);
-
-  useEffect(() => {
-    const newSocket = io("http://127.0.0.1:5000"); // Connect to Flask-SocketIO
+    // Ensure this matches your Flask port (e.g., 5000)
+    const newSocket = io("http://127.0.0.1:5000");
     setSocket(newSocket);
 
     newSocket.on("connect", () => {
-      console.log("Connected to WebSocket server");
+      console.log("Connected with ID:", newSocket.id);
     });
 
-    newSocket.on("processing_update", (data) => {
-      console.log("Processing update:", data);
+    // 2. Listen for the "Done" signal containing Data
+    newSocket.on("processing_update", (response) => {
+      console.log("Received Update:", response);
 
-      if (data.status === "done") {
+      if (response.status === "done") {
         setIsProcessing(false);
         setUploadSuccess(true);
-        onUploadSuccess && onUploadSuccess();
-      } else if (data.status === "failed") {
+        // PASS THE DATA UP TO THE PARENT
+        if (onUploadSuccess && response.data) {
+          onUploadSuccess(response.data);
+        }
+      } else if (response.status === "failed") {
         setIsProcessing(false);
-        onUploadError && onUploadError(data.error);
+        setUploading(false); // Stop progress bar
+        if (onUploadError) onUploadError(response.error);
       }
     });
 
     return () => newSocket.close();
-  }, []);
+  }, [onUploadSuccess, onUploadError]);
 
   const handleFileChange = (event) => {
     const selectedFile = event.target.files[0];
@@ -50,8 +53,15 @@ export const FileUpload = ({ onUploadSuccess, onUploadError }) => {
   };
 
   const handleSubmit = () => {
-    if (!file || !password) {
-      alert("Please provide both the PDF file and password");
+    if (!file) {
+      alert("Please select a PDF file.");
+      return;
+    }
+
+    // 3. Ensure we have a socket ID before sending
+    if (!socket || !socket.id) {
+      console.warn("Socket not ready yet");
+      alert("Establishing connection... please try again in a moment.");
       return;
     }
 
@@ -60,10 +70,12 @@ export const FileUpload = ({ onUploadSuccess, onUploadError }) => {
     setUploading(true);
 
     const formData = new FormData();
-    formData.append("the_file", file);
+    formData.append("the_file", file); // Must match backend 'the_file'
     formData.append("pass_code", password);
+    formData.append("socket_id", socket.id); // VITAL: Tell backend who we are
 
     const xhr = new XMLHttpRequest();
+    // Ensure this matches your Flask route
     xhr.open("POST", "http://127.0.0.1:5000/upload", true);
 
     xhr.upload.onprogress = (event) => {
@@ -74,19 +86,21 @@ export const FileUpload = ({ onUploadSuccess, onUploadError }) => {
     };
 
     xhr.onload = () => {
-      setUploading(false);
+      setUploading(false); // Upload done, now waiting for processing
       if (xhr.status === 200) {
         setUploadProgress(100);
+        // Note: We stay in "isProcessing" state until the Socket says "done"
       } else {
         setIsProcessing(false);
-        onUploadError && onUploadError("Upload failed.");
+        if (onUploadError)
+          onUploadError("Upload failed with status " + xhr.status);
       }
     };
 
     xhr.onerror = () => {
       setUploading(false);
       setIsProcessing(false);
-      onUploadError && onUploadError("Network error.");
+      if (onUploadError) onUploadError("Network error.");
     };
 
     xhr.send(formData);
@@ -96,8 +110,10 @@ export const FileUpload = ({ onUploadSuccess, onUploadError }) => {
     <div className="w-full">
       {!file ? (
         <div
-          className={`p-10 rounded-lg cursor-pointer w-full border-2 border-dashed ${
-            isDragging ? "border-blue-500 bg-blue-100" : "border-emerald-500"
+          className={`p-10 rounded-2xl cursor-pointer w-full border-2 border-dashed ${
+            isDragging
+              ? "border-emerald-400 bg-emerald-500/10"
+              : "border-white/20 hover:border-emerald-500/50 hover:bg-white/5"
           } transition-all duration-300`}
           onClick={() => fileInputRef.current.click()}
           onDragOver={(e) => {
@@ -118,59 +134,64 @@ export const FileUpload = ({ onUploadSuccess, onUploadError }) => {
             className="hidden"
             onChange={handleFileChange}
           />
-          <div className="flex flex-col items-center justify-center">
-            <p className="text-gray-700 font-bold">Upload PDF file</p>
-            <p className="text-gray-500 text-sm mt-2">
-              Drag & drop your file here or click to upload
+          <div className="flex flex-col items-center justify-center text-center">
+            <p className="text-slate-300 font-bold text-lg">
+              Upload M-Pesa Statement
+            </p>
+            <p className="text-slate-500 text-sm mt-2">
+              Drag & drop or click to browse (PDF only)
             </p>
           </div>
         </div>
       ) : uploadSuccess ? (
-        // Success message UI
-        <div className="p-6 rounded-lg bg-green-500 text-white text-center shadow-md">
-          <p className="text-2xl font-bold">Processing Complete!</p>
-          <p className="mt-2 text-lg">
-            Your PDF has been successfully processed.
+        <div className="p-6 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-center animate-in zoom-in-95">
+          <p className="text-2xl font-bold text-emerald-400">Success!</p>
+          <p className="mt-2 text-sm text-emerald-200/70">
+            Redirecting to dashboard...
           </p>
         </div>
       ) : isProcessing ? (
-        // Loading spinner while processing
-        <div className="flex flex-col items-center justify-center p-6 bg-slate-700 rounded-lg">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500"></div>
-          <p className="text-yellow-400 font-bold mt-4">Processing PDF...</p>
+        <div className="flex flex-col items-center justify-center p-8 bg-white/5 rounded-2xl border border-white/10">
+          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-emerald-500 border-r-2 border-emerald-500/30"></div>
+          <p className="text-emerald-400 font-medium mt-4 animate-pulse">
+            {isUploading
+              ? `Uploading... ${uploadProgress}%`
+              : "AI Processing..."}
+          </p>
+          {!isUploading && (
+            <p className="text-xs text-slate-500 mt-2">
+              Decrypting & Analyzing tables
+            </p>
+          )}
         </div>
       ) : (
-        // File name, password input, and upload button
-        <div className="p-6 rounded-lg bg-slate-700 shadow-md">
-          <p className="text-gray-400 font-medium">{file.name}</p>
+        <div className="p-6 rounded-2xl bg-white/5 border border-white/10 shadow-xl">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-slate-300 font-medium truncate max-w-[200px]">
+              {file.name}
+            </p>
+            <button
+              onClick={() => setFile(null)}
+              className="text-xs text-rose-400 hover:text-rose-300"
+            >
+              Change
+            </button>
+          </div>
+
           <input
             type="password"
-            placeholder="Enter PDF password"
+            placeholder="Enter PDF password (ID Number)"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full mt-4 p-2 border rounded-lg"
+            className="w-full p-3 bg-black/20 border border-white/10 rounded-xl text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-500/50 transition-colors"
           />
 
-          {isUploading ? (
-            <div className="mt-4 w-full">
-              <p className="text-white text-center">
-                Uploading... {uploadProgress}%
-              </p>
-              <div className="w-full bg-gray-300 rounded-full h-2 mt-2">
-                <div
-                  className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${uploadProgress}%` }}
-                ></div>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={handleSubmit}
-              className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-lg w-full"
-            >
-              Submit
-            </button>
-          )}
+          <button
+            onClick={handleSubmit}
+            className="mt-6 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-xl w-full transition-all active:scale-[0.98]"
+          >
+            Process Statement
+          </button>
         </div>
       )}
     </div>
