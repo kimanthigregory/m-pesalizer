@@ -1,140 +1,171 @@
-import React, { useState, useEffect, useRef } from "react";
-
+import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import "../index.css";
 import heroImage from "../assets/hero2.svg";
-import Card from "../components/card";
-import cardData from "../components/cardData";
-import Privacy from "../components/privacy";
-import Timeline from "../components/timeline";
-import Footer from "../components/footer";
 import { FileUpload } from "../components/upload";
 
 function Modal({ show, onClose, children }) {
   const modalRef = useRef(null);
-
   useEffect(() => {
     if (show) {
       modalRef.current?.focus();
-      document.body.style.overflow = "hidden"; // Prevent scrolling when modal is open
+      document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "auto";
     }
-
-    const handleKeyDown = (e) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [show, onClose]);
+  }, [show]);
 
   if (!show) return null;
 
   return (
     <div
-      className="fixed inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm z-50 transition-opacity duration-300 opacity-99"
+      className="fixed inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm z-50"
       onClick={onClose}
     >
       <div
-        ref={modalRef}
-        className="bg-slate-700 rounded-lg p-10 shadow-lg transform scale-95 animate-fadeIn"
+        className="bg-slate-800 border border-white/10 rounded-2xl p-10 relative max-w-lg w-full mx-4"
         onClick={(e) => e.stopPropagation()}
-        tabIndex="-1"
       >
         <button
-          className="absolute top-3 right-3 text-gray-500 hover:text-gray-900"
+          className="absolute top-4 right-4 text-gray-400 hover:text-white"
           onClick={onClose}
-          aria-label="Close Modal"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
+          ✕
         </button>
-
-        {/* Modal Content */}
-
         {children}
       </div>
     </div>
   );
 }
 
-export default function LandingPage() {
+export default function LandingPage({ setMpesaData }) {
   const [showModal, setShowModal] = useState(false);
-  const buttonRef = useRef(null);
-
-  const handleModalOpen = () => {
-    setShowModal(true);
-  };
-
-  const handleModalClose = () => {
-    setShowModal(false);
-    buttonRef.current?.focus(); // Restore focus to the button
-  };
+  const navigate = useNavigate();
 
   return (
     <>
-      <section className="flex flex-col text-center md:text-left md:flex-row gap-3 h-screen bg-[#183b25] p-3 text-stone-50 items-center">
-        <div className="flex-1">
-          <h1 className="text-5xl my-8">
-            Analyze Your <br /> M-Pesa Statements
+      <section className="flex flex-col text-center md:text-left md:flex-row gap-3 h-screen bg-[#183b25] p-3 text-stone-50 items-center overflow-hidden">
+        <div className="flex-1 md:pl-20">
+          <h1 className="text-5xl md:text-7xl font-bold leading-tight">
+            Analyze Your <br /> <span className="text-emerald-400">M-Pesa</span>{" "}
+            Statements
           </h1>
-          <h2 className="text-base md:text-xl">
-            Effortlessly analyze your spending, track expenses, and gain
-            valuable financial insights.
-          </h2>
+          <p className="text-stone-300 mt-6 text-lg max-w-xl">
+            Upload your statement to see your financial pulse, track recipients,
+            and identify recurring expenses.
+          </p>
           <button
-            className="mt-5 p-[3px] relative"
-            ref={buttonRef}
-            onClick={handleModalOpen}
+            className="mt-8 px-10 py-4 bg-gray-900 rounded-[6px] text-white font-bold border border-emerald-500/20 hover:bg-emerald-900 transition"
+            onClick={() => setShowModal(true)}
           >
-            <div className="absolute inset-0 bg-gradient-to-r bg-gray-800 to-emerald-500 to-90% rounded-lg" />
-            <div className="px-8 py-2 dark:bg-gray-800 rounded-[6px] relative group transition duration-200 text-white hover:bg-transparent">
-              Upload Now
-            </div>
+            Upload Now
           </button>
-          <Modal show={showModal} onClose={handleModalClose}>
-            {/* Your form content goes here */}
-            <FileUpload />
+
+          <Modal show={showModal} onClose={() => setShowModal(false)}>
+            <div className="text-center mb-6">
+              <h3 className="text-2xl font-bold text-white">
+                Import Statement
+              </h3>
+              <p className="text-slate-400 text-sm mt-1">
+                Safaricom PDF Statement
+              </p>
+            </div>
+
+            <FileUpload
+              onUploadSuccess={(response) => {
+                const rawList = Array.isArray(response)
+                  ? response
+                  : response.data || [];
+
+                if (rawList.length > 0) {
+                  const formattedData = rawList.map((item) => {
+                    // 1. Map Summary Names to include Colons and Caps (JSON 1 format)
+                    const nameMapping = {
+                      "Cash Out": "AGENT WITHDRAWAL:",
+                      "Send Money": "SEND MONEY:",
+                      "B2C Payment": "RECEIVED MONEY:",
+                      "Pay Bill": "LIPA NA M-PESA (PAYBILL):",
+                      "Cash In": "AGENT DEPOSIT:",
+                      "Customer Merchant Payment":
+                        "LIPA NA M-PESA (BUY GOODS):",
+                      "Customer Airtime Purchase": "AIRTIME PURCHASE:",
+                      "FSI Withdraw": "M-SHWARI WITHDRAW:",
+                      "FSI Deposit": "M-SHWARI DEPOSIT:",
+                      "TOTAL:": "TOTAL:",
+                    };
+
+                    const rawType =
+                      item["TRANSACTION TYPE"] ||
+                      item["Transaction Type"] ||
+                      "";
+                    const mappedType =
+                      nameMapping[rawType] ||
+                      rawType.toUpperCase() +
+                        (rawType.endsWith(":") ? "" : ":");
+
+                    // 2. Fix the "Receipt No" Key (Detect missing dot)
+                    const receiptId =
+                      item["Receipt No."] ||
+                      item["Receipt No"] ||
+                      item["Receipt"];
+
+                    // 3. Amount Formatter (Cleans newline keys like "Withdraw\nn" and handles empty zeros)
+                    const cleanAmount = (val) => {
+                      if (!val || val === "0.00" || val === "0") return "";
+                      return String(val).trim();
+                    };
+
+                    if (!receiptId) {
+                      // --- SUMMARY ROW MAPPING ---
+                      return {
+                        "TRANSACTION TYPE": mappedType,
+                        "PAID IN": item["PAID IN"] || item["Paid in"] || "0.00",
+                        "PAID OUT":
+                          item["PAID OUT"] || item["Withdraw\nn"] || "0.00",
+                      };
+                    } else {
+                      // --- TRANSACTION ROW MAPPING ---
+                      return {
+                        "Receipt No.": receiptId, // Standardized key for Overview filter
+                        "Completion Time":
+                          item["Completion Time"] || item["Date"] || "",
+                        Details: item["Details"] || "",
+                        "Transaction Status":
+                          item["Transaction Status"] || "Completed",
+                        "Paid In": cleanAmount(
+                          item["Paid in"] || item["Paid In"]
+                        ),
+                        Withdrawn: cleanAmount(
+                          item["Withdraw\nn"] || item["Withdrawn"]
+                        ),
+                        Balance: item["Balance"] || "0.00",
+                      };
+                    }
+                  });
+
+                  // DEBUG LOGS to confirm mapping worked
+                  console.log("✅ Adapted Row 0:", formattedData[0]);
+                  console.log("✅ Adapted Row 10:", formattedData[10]);
+
+                  localStorage.setItem(
+                    "mpesaData",
+                    JSON.stringify(formattedData)
+                  );
+                  setMpesaData(formattedData);
+                  navigate("/dashboard");
+                }
+              }}
+              onUploadError={(err) => alert("Upload failed: " + err)}
+            />
           </Modal>
         </div>
-        <div className="flex-1 w-80 md:h-150">
+        <div className="flex-1 w-full flex justify-center items-center p-10">
           <img
             src={heroImage}
-            alt="hero image showing someone doing some analysis"
+            className="max-h-[70vh] drop-shadow-2xl"
+            alt="Hero"
           />
         </div>
-      </section>
-
-      <section className="flex flex-col-reverse items-center justify-center md:flex-row gap-20">
-        {cardData.map((data) => {
-          return <Card key={data.id} item={data} />;
-        })}
-      </section>
-
-      <section>
-        <Timeline />
-      </section>
-
-      <section>
-        <Privacy />
-      </section>
-
-      <section>
-        <Footer />
       </section>
     </>
   );

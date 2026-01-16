@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import React, { useMemo } from "react";
 import { ArrowUpRight, ArrowDownRight, Activity } from "lucide-react";
 
 const BentoCard = ({ children, className = "", title = "" }) => (
@@ -13,7 +13,7 @@ const BentoCard = ({ children, className = "", title = "" }) => (
 );
 
 const formatCurrency = (val) => {
-  const num = parseFloat(String(val).replace(/,/g, ""));
+  const num = parseFloat(String(val || "0").replace(/,/g, ""));
   return new Intl.NumberFormat("en-KE", {
     style: "currency",
     currency: "KES",
@@ -21,44 +21,62 @@ const formatCurrency = (val) => {
 };
 
 export default function OverviewPage({ rawData = [] }) {
-  // Memoize calculations so they don't re-run on every render
+  // 1. DATA GUARD: Ensure data exists before running logic
+  if (!rawData || rawData.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] text-slate-400">
+        <Activity className="mb-4 opacity-20" size={48} />
+        <p className="text-xl font-semibold">Waiting for data...</p>
+        <p className="text-sm">
+          If this persists, please try re-uploading your statement.
+        </p>
+      </div>
+    );
+  }
+
   const stats = useMemo(() => {
-    // 1. Find the TOTAL row from the summary section
+    // 2. Find the TOTAL row
     const totalRow = rawData.find(
       (item) => item["TRANSACTION TYPE"] === "TOTAL:"
     );
 
-    // 2. Find the latest balance from the transaction section
-    // (Filtering for rows with "Receipt No." ensuring we get a real transaction)
+    // 3. Find Transactions
     const transactions = rawData.filter((item) => item["Receipt No."]);
     const latestBalance =
       transactions.length > 0 ? transactions[0]["Balance"] : "0.00";
 
-    // 3. Extract Fees (Sum of "Pay Bill Charge" or withdrawal charges in Details)
+    // 4. Calculate Fees
     const totalFees = transactions.reduce((acc, curr) => {
+      const details = (curr.Details || "").toLowerCase();
       const isFee =
-        curr.Details?.toLowerCase().includes("charge") ||
-        curr.Details?.toLowerCase().includes("cost");
+        details.includes("charge") ||
+        details.includes("cost") ||
+        details.includes("fee");
       if (isFee) {
-        return acc + Math.abs(parseFloat(curr.Withdrawn.replace(/,/g, "")));
+        const val = parseFloat(String(curr.Withdrawn || "0").replace(/,/g, ""));
+        return acc + Math.abs(isNaN(val) ? 0 : val);
       }
       return acc;
     }, 0);
 
+    const pIn = parseFloat(
+      String(totalRow?.["PAID IN"] || "0").replace(/,/g, "")
+    );
+    const pOut = parseFloat(
+      String(totalRow?.["PAID OUT"] || "0").replace(/,/g, "")
+    );
+
     return {
       totalIn: totalRow?.["PAID IN"] || "0.00",
       totalOut: totalRow?.["PAID OUT"] || "0.00",
-      netFlow: (
-        parseFloat((totalRow?.["PAID IN"] || "0").replace(/,/g, "")) -
-        parseFloat((totalRow?.["PAID OUT"] || "0").replace(/,/g, ""))
-      ).toFixed(2),
+      netFlow: (pIn - pOut).toFixed(2),
       balance: latestBalance,
       fees: totalFees.toFixed(2),
     };
   }, [rawData]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-700">
       <header className="mb-10 flex justify-between items-end">
         <div>
           <h2 className="text-3xl font-bold text-white tracking-tight">
@@ -79,7 +97,6 @@ export default function OverviewPage({ rawData = [] }) {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {/* Net Flow */}
         <BentoCard className="md:col-span-2 bg-gradient-to-br from-emerald-500/10 to-transparent">
           <div className="flex flex-col h-full justify-between">
             <div className="flex justify-between items-start">
@@ -105,7 +122,6 @@ export default function OverviewPage({ rawData = [] }) {
           </div>
         </BentoCard>
 
-        {/* Money In */}
         <BentoCard className="flex flex-col justify-between">
           <div className="p-2 w-fit bg-emerald-500/10 rounded-lg">
             <ArrowDownRight className="text-emerald-400" size={20} />
@@ -118,7 +134,6 @@ export default function OverviewPage({ rawData = [] }) {
           </div>
         </BentoCard>
 
-        {/* Money Out */}
         <BentoCard className="flex flex-col justify-between">
           <div className="p-2 w-fit bg-rose-500/10 rounded-lg">
             <ArrowUpRight className="text-rose-400" size={20} />
@@ -131,13 +146,11 @@ export default function OverviewPage({ rawData = [] }) {
           </div>
         </BentoCard>
 
-        {/* Dynamic Bar Chart Placeholder */}
         <BentoCard
           className="md:col-span-3 h-64"
           title="Transaction Volume Activity"
         >
           <div className="w-full h-full flex items-end gap-2 pb-2">
-            {/* Generating bars based on real transaction count for visual feedback */}
             {Array.from({ length: 12 }).map((_, i) => (
               <div
                 key={i}
@@ -148,7 +161,6 @@ export default function OverviewPage({ rawData = [] }) {
           </div>
         </BentoCard>
 
-        {/* Total Fees */}
         <BentoCard title="Transaction Fees">
           <div className="flex flex-col">
             <h4 className="text-3xl font-bold text-orange-400">
@@ -162,7 +174,7 @@ export default function OverviewPage({ rawData = [] }) {
                 <div className="h-full bg-orange-500 w-[65%]" />
               </div>
               <p className="text-[10px] text-slate-500 italic text-center">
-                Efficiency: 99.6%
+                Calculated from Details
               </p>
             </div>
           </div>
