@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "../index.css";
 import heroImage from "../assets/hero2.svg";
 import { FileUpload } from "../components/upload";
+import { mockMpesaData } from "../data/mockData";
 
 function Modal({ show, onClose, children }) {
   const modalRef = useRef(null);
@@ -41,7 +42,13 @@ function Modal({ show, onClose, children }) {
 export default function LandingPage({ setMpesaData }) {
   const [showModal, setShowModal] = useState(false);
   const navigate = useNavigate();
+  const handleDemoMode = () => {
+    // 2. This will now work because setMpesaData is defined as a prop
+    setMpesaData(mockMpesaData);
 
+    // The App.jsx 'key' logic will now detect the change and
+    // redirect you to /dashboard automatically.
+  };
   return (
     <>
       <section className="flex flex-col text-center md:text-left md:flex-row gap-3 h-screen bg-[#183b25] p-3 text-stone-50 items-center overflow-hidden">
@@ -54,13 +61,21 @@ export default function LandingPage({ setMpesaData }) {
             Upload your statement to see your financial pulse, track recipients,
             and identify recurring expenses.
           </p>
-          <button
-            className="mt-8 px-10 py-4 bg-gray-900 rounded-[6px] text-white font-bold border border-emerald-500/20 hover:bg-emerald-900 transition"
-            onClick={() => setShowModal(true)}
-          >
-            Upload Now
-          </button>
+          <div className="flex flex-col sm:flex-row gap-4 mt-8">
+            <button
+              onClick={() => setShowModal(true)}
+              className="px-10 py-4 bg-emerald-600 rounded-lg text-white font-bold hover:bg-emerald-500 transition shadow-lg shadow-emerald-900/20"
+            >
+              Upload Statement
+            </button>
 
+            <button
+              onClick={handleDemoMode}
+              className="px-10 py-4 bg-slate-800/50 border border-white/10 rounded-lg text-slate-300 font-bold hover:bg-slate-700 transition"
+            >
+              Try Demo Version
+            </button>
+          </div>
           <Modal show={showModal} onClose={() => setShowModal(false)}>
             <div className="text-center mb-6">
               <h3 className="text-2xl font-bold text-white">

@@ -5,9 +5,11 @@ import {
   Navigate,
 } from "react-router-dom";
 
-// Imports
+// Route & Layout Imports
 import LandingPage from "./routes/landingPage";
 import DashboardLayout from "./components/DashboardLayout";
+
+// Page Imports
 import OverviewPage from "./pages/OverviewPage";
 import TransactionsPage from "./pages/TransactionsPage";
 import TrendsPage from "./pages/TrendsPage";
@@ -20,23 +22,39 @@ export default function App() {
   const [mpesaData, setMpesaData] = useState(null);
   const [isInitializing, setIsInitializing] = useState(true);
 
+  // 1. Initial Load from LocalStorage
   useEffect(() => {
     const saved = localStorage.getItem("mpesaData");
     if (saved) {
       try {
-        setMpesaData(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        if (parsed && Array.isArray(parsed)) {
+          setMpesaData(parsed);
+        }
       } catch (e) {
+        console.error("Failed to parse storage data", e);
         localStorage.removeItem("mpesaData");
       }
     }
     setIsInitializing(false);
   }, []);
 
+  // 2. Centralized State Updater (Used by LandingPage / Demo Mode)
+  // This ensures state and storage stay in sync instantly
+  const handleSetData = (data) => {
+    if (data) {
+      localStorage.setItem("mpesaData", JSON.stringify(data));
+      setMpesaData(data);
+    }
+  };
+
+  // 3. Clear Data Handler
   const handleClearData = () => {
     localStorage.removeItem("mpesaData");
     setMpesaData(null);
   };
 
+  // 4. Reactive Router Configuration
   const router = useMemo(() => {
     return createBrowserRouter([
       {
@@ -44,7 +62,7 @@ export default function App() {
         element: mpesaData ? (
           <Navigate to="/dashboard" replace />
         ) : (
-          <LandingPage setMpesaData={setMpesaData} />
+          <LandingPage setMpesaData={handleSetData} />
         ),
       },
       {
@@ -85,11 +103,11 @@ export default function App() {
     );
   }
 
-  // THE SECRET: Adding a 'key' prop here forces the Provider to re-mount
-  // immediately when mpesaData changes from [Array] to [null]
+  // key={mpesaData ? ...} forces the Provider to unmount/remount
+  // This is the strongest way to handle instant route switching in v6
   return (
     <RouterProvider
-      key={mpesaData ? "data-active" : "data-cleared"}
+      key={mpesaData ? "authenticated" : "anonymous"}
       router={router}
     />
   );
