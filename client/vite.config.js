@@ -8,14 +8,6 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),
-      // FIX: Don't point to /dist/clsx.mjs.
-      // Pointing to 'clsx' lets Vite handle the export map resolution.
-      "lucide-react": "lucide-react",
-      clsx: "clsx",
     },
-  },
-  // This is the extra "insurance" for Arch/Linux builds
-  optimizeDeps: {
-    include: ["lucide-react", "clsx"],
   },
 });
