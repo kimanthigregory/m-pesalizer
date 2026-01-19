@@ -1,6 +1,9 @@
 import React, { useRef, useState, useEffect } from "react";
 import { io } from "socket.io-client";
 
+// Define your backend URL once here
+const API_BASE_URL = "https://mpesa-lens.onrender.com";
+
 export const FileUpload = ({ onUploadSuccess, onUploadError }) => {
   const [file, setFile] = useState(null);
   const [password, setPassword] = useState("");
@@ -14,12 +17,20 @@ export const FileUpload = ({ onUploadSuccess, onUploadError }) => {
 
   // 1. Initialize Socket
   useEffect(() => {
-    // Ensure this matches your Flask port (e.g., 5000)
-    const newSocket = io("http://127.0.0.1:5000");
+    // We force 'websocket' transport to avoid Render's polling issues
+    const newSocket = io(API_BASE_URL, {
+      transports: ["websocket"],
+      upgrade: false,
+    });
+
     setSocket(newSocket);
 
     newSocket.on("connect", () => {
-      console.log("Connected with ID:", newSocket.id);
+      console.log("Connected to Render with ID:", newSocket.id);
+    });
+
+    newSocket.on("connect_error", (err) => {
+      console.error("Socket Connection Error:", err.message);
     });
 
     // 2. Listen for the "Done" signal containing Data
@@ -29,13 +40,12 @@ export const FileUpload = ({ onUploadSuccess, onUploadError }) => {
       if (response.status === "done") {
         setIsProcessing(false);
         setUploadSuccess(true);
-        // PASS THE DATA UP TO THE PARENT
         if (onUploadSuccess && response.data) {
           onUploadSuccess(response.data);
         }
       } else if (response.status === "failed") {
         setIsProcessing(false);
-        setUploading(false); // Stop progress bar
+        setUploading(false);
         if (onUploadError) onUploadError(response.error);
       }
     });
@@ -44,7 +54,9 @@ export const FileUpload = ({ onUploadSuccess, onUploadError }) => {
   }, [onUploadSuccess, onUploadError]);
 
   const handleFileChange = (event) => {
-    const selectedFile = event.target.files[0];
+    const selectedFile = event.target.files
+      ? event.target.files[0]
+      : event.dataTransfer.files[0];
     if (selectedFile && selectedFile.type === "application/pdf") {
       setFile(selectedFile);
     } else {
@@ -58,10 +70,10 @@ export const FileUpload = ({ onUploadSuccess, onUploadError }) => {
       return;
     }
 
-    // 3. Ensure we have a socket ID before sending
+    // Ensure we have a socket ID before sending
     if (!socket || !socket.id) {
       console.warn("Socket not ready yet");
-      alert("Establishing connection... please try again in a moment.");
+      alert("Connecting to server... Please wait a few seconds and try again.");
       return;
     }
 
@@ -70,13 +82,13 @@ export const FileUpload = ({ onUploadSuccess, onUploadError }) => {
     setUploading(true);
 
     const formData = new FormData();
-    formData.append("the_file", file); // Must match backend 'the_file'
+    formData.append("the_file", file);
     formData.append("pass_code", password);
-    formData.append("socket_id", socket.id); // VITAL: Tell backend who we are
+    formData.append("socket_id", socket.id);
 
     const xhr = new XMLHttpRequest();
-    // Ensure this matches your Flask route
-    xhr.open("POST", "http://127.0.0.1:5000/upload", true);
+    // Use the dynamic API_BASE_URL here
+    xhr.open("POST", `${API_BASE_URL}/upload`, true);
 
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) {
@@ -86,26 +98,28 @@ export const FileUpload = ({ onUploadSuccess, onUploadError }) => {
     };
 
     xhr.onload = () => {
-      setUploading(false); // Upload done, now waiting for processing
+      setUploading(false);
       if (xhr.status === 200) {
         setUploadProgress(100);
-        // Note: We stay in "isProcessing" state until the Socket says "done"
+        console.log("Upload successful, waiting for AI processing signal...");
       } else {
         setIsProcessing(false);
         if (onUploadError)
-          onUploadError("Upload failed with status " + xhr.status);
+          onUploadError(`Upload failed (${xhr.status}). Check server logs.`);
       }
     };
 
     xhr.onerror = () => {
       setUploading(false);
       setIsProcessing(false);
-      if (onUploadError) onUploadError("Network error.");
+      if (onUploadError)
+        onUploadError("Network error: Could not reach the server.");
     };
 
     xhr.send(formData);
   };
 
+  // ... rest of your return/UI remains the same
   return (
     <div className="w-full">
       {!file ? (
@@ -147,7 +161,7 @@ export const FileUpload = ({ onUploadSuccess, onUploadError }) => {
         <div className="p-6 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-center animate-in zoom-in-95">
           <p className="text-2xl font-bold text-emerald-400">Success!</p>
           <p className="mt-2 text-sm text-emerald-200/70">
-            Redirecting to dashboard...
+            Statement analyzed successfully.
           </p>
         </div>
       ) : isProcessing ? (
