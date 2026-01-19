@@ -9,6 +9,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),
+      "lucide-react": "lucide-react/dist/esm/lucide-react",
     },
   },
 });
