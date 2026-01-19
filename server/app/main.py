@@ -12,7 +12,7 @@ app = Flask(__name__)
 # Use an Environment Variable for the secret key in production
 app.secret_key = os.environ.get('SECRET_KEY', 'default-key-for-dev')
 
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
 # In production, you might want to replace "*" with your actual Vercel URL
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet') 
 
